@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-  <title>Horse</title>
+  <title>Horse - Animation Fix</title>
 
   <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer/dist/model-viewer.min.js"></script>
 
@@ -34,6 +34,11 @@
       border-radius: 20px;
       border: none;
       cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #f0f0f0;
     }
 
     button.active {
@@ -52,21 +57,28 @@
       left: 20px;
       background: rgba(0,0,0,0.8);
       color: white;
-      padding: 10px;
+      padding: 15px;
       border-radius: 5px;
       font-family: monospace;
       z-index: 1000;
-      max-width: 300px;
+      max-width: 400px;
     }
+
+    .success { color: lightgreen; }
+    .error { color: red; }
+    .warning { color: orange; }
   </style>
 </head>
 
 <body>
 
 <div id="debug">
-  <div>Статус: <span id="status">Загрузка...</span></div>
-  <div>Модель: <span id="modelPath">horse.glb</span></div>
-  <div id="error"></div>
+  <div>📊 <strong>Отладка анимаций:</strong></div>
+  <div>Статус модели: <span id="modelStatus">Загрузка...</span></div>
+  <div>Всего анимаций: <span id="animCount">0</span></div>
+  <div id="animList"></div>
+  <div>Текущая анимация: <span id="currentAnim">-</span></div>
+  <div id="warnings"></div>
 </div>
 
 <div id="controls">
@@ -84,6 +96,7 @@
   shadow-intensity="1"
   loading="eager"
   reveal="auto"
+  animation-crossfade-duration="200"
 >
 
   <effect-composer>
@@ -102,8 +115,13 @@ import 'https://cdn.jsdelivr.net/npm/@google/model-viewer-effects/dist/model-vie
   const btn2 = document.getElementById('btn2');
   const outlineBtn = document.getElementById('outlineBtn');
   const pixelBtn = document.getElementById('pixelBtn');
-  const statusSpan = document.getElementById('status');
-  const errorDiv = document.getElementById('error');
+  
+  // Элементы отладки
+  const modelStatus = document.getElementById('modelStatus');
+  const animCount = document.getElementById('animCount');
+  const animList = document.getElementById('animList');
+  const currentAnimSpan = document.getElementById('currentAnim');
+  const warningsDiv = document.getElementById('warnings');
 
   const outlineEffect = document.getElementById('outlineEffect');
   const pixelEffect = document.getElementById('pixelEffect');
@@ -112,78 +130,112 @@ import 'https://cdn.jsdelivr.net/npm/@google/model-viewer-effects/dist/model-vie
   let outlineOn = false;
   let pixelOn = false;
 
-  // Проверка наличия эффектов
-  if (!outlineEffect || !pixelEffect) {
-    console.warn('Эффекты не найдены в DOM');
+  // Функция обновления отладочной информации
+  function updateDebugInfo() {
+    if (animations.length > 0) {
+      animList.innerHTML = '📋 Список анимаций:<br>' + 
+        animations.map((anim, i) => `  ${i}: ${anim}`).join('<br>');
+      animCount.textContent = animations.length;
+      animCount.className = 'success';
+      
+      // Автоматически запускаем первую анимацию если есть
+      if (mv.animationName) {
+        currentAnimSpan.textContent = mv.animationName;
+      } else if (animations.length > 0) {
+        setTimeout(() => playAnimation(0), 500);
+      }
+    }
   }
 
-  // Отслеживание всех событий загрузки
+  // Загрузка модели
   mv.addEventListener('load', () => {
-    statusSpan.textContent = '✅ Загружено';
-    statusSpan.style.color = 'lightgreen';
+    modelStatus.innerHTML = '✅ Загружено';
+    modelStatus.className = 'success';
     
+    // Получаем анимации
     animations = mv.availableAnimations || [];
     console.log('Доступные анимации:', animations);
     
-    if (animations.length > 0) {
-      playAnimation(0);
-    } else {
-      console.log('У модели нет анимаций');
-    }
-  });
-
-  mv.addEventListener('error', (event) => {
-    const error = event.detail;
-    statusSpan.textContent = '❌ Ошибка';
-    statusSpan.style.color = 'red';
-    
-    let errorMsg = 'Неизвестная ошибка';
-    if (error && error.type) {
-      errorMsg = `${error.type}: ${error.message || ''}`;
+    if (animations.length === 0) {
+      warningsDiv.innerHTML = '⚠️ <span class="warning">В модели нет анимаций!</span>';
+      
+      // Пробуем получить анимации другим способом
+      setTimeout(() => {
+        // Проверяем через внутренние свойства
+        if (mv.model && mv.model.animations) {
+          animations = mv.model.animations;
+          console.log('Анимации из model:', animations);
+        }
+      }, 1000);
     }
     
-    errorDiv.innerHTML = `Ошибка: ${errorMsg}`;
-    console.error('Ошибка model-viewer:', error);
+    updateDebugInfo();
   });
 
-  mv.addEventListener('progress', (event) => {
-    const progress = Math.round(event.detail.totalProgress * 100);
-    statusSpan.textContent = `Загрузка... ${progress}%`;
-  });
-
-  // Дополнительная проверка загрузки модели
-  fetch('horse.glb', { method: 'HEAD' })
-    .then(response => {
-      if (response.ok) {
-        console.log('✅ Файл модели доступен');
-        document.getElementById('modelPath').style.color = 'lightgreen';
-      } else {
-        console.error('❌ Файл модели НЕ доступен:', response.status);
-        document.getElementById('modelPath').style.color = 'red';
-        errorDiv.innerHTML = `Файл не найден (${response.status})`;
-      }
-    })
-    .catch(err => {
-      console.error('❌ Ошибка при проверке файла:', err);
-      document.getElementById('modelPath').style.color = 'red';
-      errorDiv.innerHTML = `Ошибка доступа к файлу: ${err.message}`;
-    });
-
+  // Функция воспроизведения анимации
   function playAnimation(index) {
-    if (!animations[index]) {
-      console.warn(`Анимация ${index} не существует`);
+    if (!animations || animations.length === 0) {
+      console.warn('Нет доступных анимаций');
+      warningsDiv.innerHTML = '⚠️ <span class="warning">Нет анимаций для воспроизведения</span>';
       return;
     }
-
-    mv.animationName = animations[index];
-    mv.currentTime = 0;
-    mv.play();
-    console.log('▶️ Играет:', animations[index]);
+    
+    if (index >= animations.length) {
+      console.warn(`Анимация ${index} не существует. Доступно: ${animations.length}`);
+      return;
+    }
+    
+    const animName = animations[index];
+    
+    try {
+      // Останавливаем текущую анимацию
+      mv.pause?.();
+      
+      // Устанавливаем новую
+      mv.animationName = animName;
+      mv.currentTime = 0;
+      
+      // Воспроизводим
+      mv.play?.();
+      
+      console.log('▶️ Играет:', animName);
+      currentAnimSpan.textContent = animName;
+      currentAnimSpan.className = 'success';
+      
+      // Подсвечиваем активную кнопку
+      [btn1, btn2].forEach(btn => btn.classList.remove('active'));
+      if (index === 0) btn1.classList.add('active');
+      if (index === 1) btn2.classList.add('active');
+      
+    } catch (e) {
+      console.error('Ошибка при воспроизведении анимации:', e);
+      warningsDiv.innerHTML = `❌ <span class="error">Ошибка: ${e.message}</span>`;
+    }
   }
 
+  // Обработка ошибок модели
+  mv.addEventListener('error', (event) => {
+    modelStatus.innerHTML = '❌ Ошибка';
+    modelStatus.className = 'error';
+    console.error('Ошибка model-viewer:', event.detail);
+  });
+
+  // Альтернативный способ получения анимаций через MutationObserver
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'animation-name') {
+        console.log('Анимация изменена на:', mv.animationName);
+      }
+    });
+  });
+  
+  observer.observe(mv, { attributes: true });
+
+  // Кнопки анимаций
   btn1.onclick = () => playAnimation(0);
   btn2.onclick = () => playAnimation(1);
 
+  // Эффекты
   outlineBtn.onclick = () => {
     if (outlineEffect) {
       outlineOn = !outlineOn;
@@ -199,6 +251,13 @@ import 'https://cdn.jsdelivr.net/npm/@google/model-viewer-effects/dist/model-vie
       pixelBtn.classList.toggle('active');
     }
   };
+
+  // Периодическая проверка состояния анимации
+  setInterval(() => {
+    if (mv.animationName) {
+      console.log('Текущая анимация:', mv.animationName, 'Время:', mv.currentTime);
+    }
+  }, 2000);
 
 })();
 </script>
