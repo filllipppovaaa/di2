@@ -2,12 +2,13 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-  <title>Horse Viewer</title>
+  <title>Horse</title>
 
-  <!-- model-viewer -->
-  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <script async src="https://ga.jspm.io/npm:es-module-shims@1.7.1/dist/es-module-shims.js"></script>
+
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer/dist/model-viewer-module.min.js"></script>
   <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer-effects/dist/model-viewer-effects.min.js"></script>
 
   <style>
@@ -15,13 +16,6 @@
       margin: 0;
       background: #f5f5f7;
       overflow: hidden;
-      font-family: Arial;
-    }
-
-    model-viewer {
-      width: 100vw;
-      height: 100vh;
-      background: #ffffff;
     }
 
     #controls {
@@ -29,12 +23,12 @@
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
+      background: white;
+      padding: 10px;
+      border-radius: 30px;
       display: flex;
       gap: 10px;
-      background: rgba(255,255,255,0.95);
-      padding: 10px 15px;
-      border-radius: 30px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
 
     button {
@@ -42,12 +36,16 @@
       border-radius: 20px;
       border: none;
       cursor: pointer;
-      font-weight: bold;
     }
 
     button.active {
-      background: #ff5500;
+      background: orange;
       color: white;
+    }
+
+    model-viewer {
+      width: 100vw;
+      height: 100vh;
     }
   </style>
 </head>
@@ -63,14 +61,10 @@
 
 <model-viewer
   id="mv"
-  src="./horse.glb"
+  src="horse.glb"
   camera-controls
   autoplay
   shadow-intensity="1"
-  exposure="1"
-  camera-orbit="0deg 75deg 5m"
-  min-camera-orbit="auto auto 2m"
-  max-camera-orbit="auto auto 10m"
 >
 
   <effect-composer>
@@ -93,32 +87,25 @@
   const pixelEffect = document.getElementById('pixelEffect');
 
   let animations = [];
+  let currentIndex = 0;
+
   let outlineOn = false;
   let pixelOn = false;
 
   // Загрузка модели
   mv.addEventListener('load', () => {
-    console.log('✅ Модель загрузилась');
-
     animations = mv.availableAnimations || [];
-    console.log('🎞 Анимации:', animations);
+    console.log('Анимации:', animations);
 
     if (animations.length > 0) {
       playAnimation(0);
-    } else {
-      console.warn('❌ В модели нет анимаций');
     }
-  });
-
-  // Ошибка загрузки
-  mv.addEventListener('error', (e) => {
-    console.error('❌ Ошибка загрузки:', e);
-    alert('Модель не загрузилась!\n\nПроверь:\n1. Запуск через сервер\n2. Путь к horse.glb');
   });
 
   function playAnimation(index) {
     if (!animations[index]) return;
 
+    currentIndex = index;
     mv.animationName = animations[index];
     mv.currentTime = 0;
     mv.play();
@@ -126,16 +113,18 @@
     console.log('▶️ Играет:', animations[index]);
   }
 
-  // КНОПКИ
+  // КНОПКИ АНИМАЦИЙ
   btn1.onclick = () => playAnimation(0);
   btn2.onclick = () => playAnimation(1);
 
+  // КОНТУР
   outlineBtn.onclick = () => {
     outlineOn = !outlineOn;
     outlineEffect.setAttribute('blend-mode', outlineOn ? 'default' : 'skip');
     outlineBtn.classList.toggle('active');
   };
 
+  // ПИКСЕЛИ
   pixelBtn.onclick = () => {
     pixelOn = !pixelOn;
     pixelEffect.setAttribute('blend-mode', pixelOn ? 'default' : 'skip');
