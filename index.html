@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Horse Viewer</title>
+
+  <!-- model-viewer -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer-effects/dist/model-viewer-effects.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: #f5f5f7;
+      overflow: hidden;
+      font-family: Arial;
+    }
+
+    model-viewer {
+      width: 100vw;
+      height: 100vh;
+      background: #ffffff;
+    }
+
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      background: rgba(255,255,255,0.95);
+      padding: 10px 15px;
+      border-radius: 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    button {
+      padding: 10px 15px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button.active {
+      background: #ff5500;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="controls">
+  <button id="btn1">🎬 Анимация 1</button>
+  <button id="btn2">🚶 Анимация 2</button>
+  <button id="outlineBtn">✨ Контур</button>
+  <button id="pixelBtn">🔳 Пиксели</button>
+</div>
+
+<model-viewer
+  id="mv"
+  src="./horse.glb"
+  camera-controls
+  autoplay
+  shadow-intensity="1"
+  exposure="1"
+  camera-orbit="0deg 75deg 5m"
+  min-camera-orbit="auto auto 2m"
+  max-camera-orbit="auto auto 10m"
+>
+
+  <effect-composer>
+    <outline-effect id="outlineEffect" color="red" blend-mode="skip"></outline-effect>
+    <pixelate-effect id="pixelEffect" granularity="15" blend-mode="skip"></pixelate-effect>
+  </effect-composer>
+
+</model-viewer>
+
+<script>
+(() => {
+
+  const mv = document.getElementById('mv');
+  const btn1 = document.getElementById('btn1');
+  const btn2 = document.getElementById('btn2');
+  const outlineBtn = document.getElementById('outlineBtn');
+  const pixelBtn = document.getElementById('pixelBtn');
+
+  const outlineEffect = document.getElementById('outlineEffect');
+  const pixelEffect = document.getElementById('pixelEffect');
+
+  let animations = [];
+  let outlineOn = false;
+  let pixelOn = false;
+
+  // Загрузка модели
+  mv.addEventListener('load', () => {
+    console.log('✅ Модель загрузилась');
+
+    animations = mv.availableAnimations || [];
+    console.log('🎞 Анимации:', animations);
+
+    if (animations.length > 0) {
+      playAnimation(0);
+    } else {
+      console.warn('❌ В модели нет анимаций');
+    }
+  });
+
+  // Ошибка загрузки
+  mv.addEventListener('error', (e) => {
+    console.error('❌ Ошибка загрузки:', e);
+    alert('Модель не загрузилась!\n\nПроверь:\n1. Запуск через сервер\n2. Путь к horse.glb');
+  });
+
+  function playAnimation(index) {
+    if (!animations[index]) return;
+
+    mv.animationName = animations[index];
+    mv.currentTime = 0;
+    mv.play();
+
+    console.log('▶️ Играет:', animations[index]);
+  }
+
+  // КНОПКИ
+  btn1.onclick = () => playAnimation(0);
+  btn2.onclick = () => playAnimation(1);
+
+  outlineBtn.onclick = () => {
+    outlineOn = !outlineOn;
+    outlineEffect.setAttribute('blend-mode', outlineOn ? 'default' : 'skip');
+    outlineBtn.classList.toggle('active');
+  };
+
+  pixelBtn.onclick = () => {
+    pixelOn = !pixelOn;
+    pixelEffect.setAttribute('blend-mode', pixelOn ? 'default' : 'skip');
+    pixelBtn.classList.toggle('active');
+  };
+
+})();
+</script>
+
+</body>
+</html>
